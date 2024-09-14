@@ -3,6 +3,8 @@
         "src"
     ],
     "java.project.referencedLibraries": [
-        "g:\\Mi unidad\\PersonalProjects\\flatlaf-3.4.jar"
-    ]
+        "g:\\Mi unidad\\PersonalProjects\\flatlaf-3.4.jar",
+        "lib/flatlaf-3.5.1.jar"
+    ],
+    "java.debug.settings.onBuildFailureProceed": true
 }
