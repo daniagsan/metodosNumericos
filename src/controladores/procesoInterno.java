@@ -2,8 +2,15 @@ package controladores;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.io.FileWriter;
+import java.io.IOException;
+import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.KeyStroke;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
 import visual.VistaDefault;
 
 public class procesoInterno implements ActionListener {
@@ -14,6 +21,7 @@ public class procesoInterno implements ActionListener {
     private int iteraciones;
     private double a;
     private double b;
+    private double x0;
     private String ecuacion = "x^3 - 3*x + 1";
     private double valorTolerancia = 0.001;
 
@@ -41,6 +49,13 @@ public class procesoInterno implements ActionListener {
         this.vista.addListener(this);
         this.menuListener = menuListener;
         valoresUsuario();
+
+        vista.registerKeyboardAction(e -> metodoElegido(),
+            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        vista.registerKeyboardAction(e -> exportarCSV(),
+            KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        vista.registerKeyboardAction(e -> limpiar(),
+            KeyStroke.getKeyStroke(KeyEvent.VK_L, java.awt.event.InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
     @Override
@@ -54,6 +69,9 @@ public class procesoInterno implements ActionListener {
                 break;
             case "Limpiar":
                 limpiar();
+                break;
+            case "Exportar CSV":
+                exportarCSV();
                 break;
         }
     }
@@ -69,6 +87,8 @@ public class procesoInterno implements ActionListener {
             return;
         }
         if (metodo.equals("Newton Raphson")) {
+            m = x0;
+            m2 = x0;
             vista.setfxDxTag("f'(x): derivada numerica de " + ecuacion);
         } else {
             vista.setfxDxTag(null);
@@ -79,12 +99,13 @@ public class procesoInterno implements ActionListener {
         try {
             a = Double.parseDouble(vista.getA());
             b = Double.parseDouble(vista.getB());
+            x0 = Double.parseDouble(vista.getX0());
             ecuacion = vista.getFx();
             valorTolerancia = Double.parseDouble(vista.getTolerancia());
             return true;
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(null,
-                "Ingrese valores numericos validos para a, b y tolerancia",
+                "Ingrese valores numericos validos para a, b, x0 y tolerancia",
                 "Error de entrada", JOptionPane.ERROR_MESSAGE);
             return false;
         }
@@ -103,22 +124,29 @@ public class procesoInterno implements ActionListener {
             reiniciarTabla();
         }
 
-        switch (metodo) {
-            case "Metodo de Biseccion":
-                metodoBiseccion();
-                break;
-            case "Falsa Posicion":
-                falsaPosicion();
-                break;
-            case "Newton Raphson":
-                newtonRapshon();
-                break;
+        try {
+            switch (metodo) {
+                case "Metodo de Biseccion":
+                    metodoBiseccion();
+                    break;
+                case "Falsa Posicion":
+                    falsaPosicion();
+                    break;
+                case "Newton Raphson":
+                    newtonRapshon();
+                    break;
+            }
+        } catch (IllegalArgumentException | ArithmeticException ex) {
+            JOptionPane.showMessageDialog(null,
+                "Error al evaluar la funcion:\n" + ex.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     public void valoresUsuario() {
         vista.setA(String.valueOf(a));
         vista.setB(String.valueOf(b));
+        vista.setX0(String.valueOf(x0));
         vista.setFx(ecuacion);
         vista.setTolerancia(String.valueOf(valorTolerancia));
     }
@@ -126,8 +154,12 @@ public class procesoInterno implements ActionListener {
     public void limpiar() {
         vista.getDefaultModel().setRowCount(0);
         iteraciones = 0;
+        m = 0;
+        m2 = 0;
         String metodo = menuListener.getMetodo();
         if (metodo != null && metodo.equals("Newton Raphson")) {
+            m = x0;
+            m2 = x0;
             vista.setfxDxTag("f'(x): derivada numerica de " + ecuacion);
         } else {
             vista.setfxDxTag(null);
@@ -136,14 +168,16 @@ public class procesoInterno implements ActionListener {
 
     public void metodoBiseccion() {
         vista.setMetodoTag("Metodo de Biseccion");
-        m = (a + b) / 2;
+        if (iteraciones == 0) {
+            metodoControl = menuListener.getMetodo();
+            m = (a + b) / 2;
+        }
         fa = Evaluador.evaluar(ecuacion, a);
         fb = Evaluador.evaluar(ecuacion, b);
         fm = Evaluador.evaluar(ecuacion, m);
         fafm = fa * fm;
 
         if (iteraciones == 0) {
-            metodoControl = menuListener.getMetodo();
             error = 0;
             mAnt = m;
         } else {
@@ -159,23 +193,31 @@ public class procesoInterno implements ActionListener {
         } else {
             b = m;
         }
+
+        m = (a + b) / 2;
     }
 
     public void falsaPosicion() {
         vista.setMetodoTag("Falsa Posicion");
         fa = Evaluador.evaluar(ecuacion, a);
         fb = Evaluador.evaluar(ecuacion, b);
-        m = a - ((fa * (b - a)) / (fb - fa));
-        fm = Evaluador.evaluar(ecuacion, m);
-        fafm = fa * fm;
 
         if (iteraciones == 0) {
             metodoControl = menuListener.getMetodo();
+        }
+
+        double mNew = a - ((fa * (b - a)) / (fb - fa));
+        fm = Evaluador.evaluar(ecuacion, mNew);
+        fafm = fa * fm;
+
+        if (iteraciones == 0) {
             error = 0;
-            mAnt = m;
+            mAnt = mNew;
+            m = mNew;
         } else {
-            error = Math.abs((m - mAnt) / m);
-            mAnt = m;
+            error = Math.abs((mNew - mAnt) / mNew);
+            mAnt = mNew;
+            m = mNew;
         }
 
         cargarValores();
@@ -195,6 +237,8 @@ public class procesoInterno implements ActionListener {
             metodoControl = menuListener.getMetodo();
             error = 0;
             error2 = 0;
+            m = x0;
+            m2 = x0;
         }
 
         fx = Evaluador.evaluar(ecuacion, m);
@@ -250,6 +294,39 @@ public class procesoInterno implements ActionListener {
         }
 
         vista.getDefaultModel().addRow(controlRow);
+    }
+
+    private void exportarCSV() {
+        TableModel model = vista.getDefaultModel();
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(null, "No hay datos para exportar", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File("resultados.csv"));
+        if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return;
+
+        try (FileWriter writer = new FileWriter(chooser.getSelectedFile())) {
+            for (int c = 0; c < model.getColumnCount(); c++) {
+                writer.write(model.getColumnName(c));
+                if (c < model.getColumnCount() - 1) writer.write(",");
+            }
+            writer.write("\n");
+
+            for (int r = 0; r < model.getRowCount(); r++) {
+                for (int c = 0; c < model.getColumnCount(); c++) {
+                    Object val = model.getValueAt(r, c);
+                    writer.write(val != null ? val.toString().replace(",", ".") : "");
+                    if (c < model.getColumnCount() - 1) writer.write(",");
+                }
+                writer.write("\n");
+            }
+
+            JOptionPane.showMessageDialog(null, "Exportado exitosamente", "CSV", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(null, "Error al exportar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public int getIteraciones() {

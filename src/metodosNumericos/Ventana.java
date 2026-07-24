@@ -1,4 +1,7 @@
 package metodosNumericos;
+import java.awt.Image;
+import java.net.URL;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -12,7 +15,6 @@ import visual.VistaDefault;
 public class Ventana extends JFrame{
 	
 	private JMenuBar menuBar = new JMenuBar();
-	//private String selectedMenuItem = null;
 	MyMenuListener listenerMenu = new MyMenuListener(this);
 
 	public Ventana() {
@@ -30,6 +32,14 @@ public class Ventana extends JFrame{
 		setResizable(true);
 		setTitle("Metodos Numericos");
 		setLocationRelativeTo(null);
+
+		URL iconUrl = getClass().getResource("/icon.png");
+		if (iconUrl != null) {
+			ImageIcon icon = new ImageIcon(iconUrl);
+			setIconImage(icon.getImage());
+		} else {
+			setIconImage(createIcon());
+		}
 		
         setJMenuBar(menuBar);
 		menuOpciones(this);
@@ -43,8 +53,19 @@ public class Ventana extends JFrame{
 		
 		validate();
 		repaint();
-		//pack();
 		miniTutorial();
+	}
+
+	private Image createIcon() {
+		java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		java.awt.Graphics2D g = img.createGraphics();
+		g.setColor(new java.awt.Color(44, 62, 80));
+		g.fillRect(0, 0, 16, 16);
+		g.setColor(java.awt.Color.WHITE);
+		g.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 10));
+		g.drawString("M", 3, 13);
+		g.dispose();
+		return img;
 	}
 
 	public void miniTutorial(){
